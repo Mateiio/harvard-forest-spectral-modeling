@@ -1,0 +1,26 @@
+# Study 2 - ANGULAR. Verified on Python 3.14.4 / Windows, 2026-08-05.
+#
+# NOTE: pygam pins scipy<1.17, so installing it downgrades scipy 1.17.1 -> 1.16.3.
+# Nothing else in the project depends on 1.17 features. If pygam is ever dropped,
+# scipy can go back up. The fallback smoother (sklearn SplineTransformer + Ridge)
+# has no such constraint.
+
+numpy>=2.4
+pandas>=3.0
+scipy>=1.16,<1.17          # upper bound imposed by pygam
+plotly>=6.9
+scikit-learn>=1.8
+pypdf>=6.14                # equation extraction from docs/ssrn-4237352.pdf
+
+pvlib>=0.15                # solar position (NREL SPA), clear-sky, Erbs diffuse fraction
+pygam>=0.12                # GAM for the SZA response function
+
+# WP0 foundation
+pyproj>=3.7                # UTM / MODIS sinusoidal reprojection, geodesic bearings
+shapely>=2.1               # exact circle-rectangle plot/pixel intersection
+
+# S1 HF365 v2 reprocessing
+rasterio>=1.5              # windowed reads of native HLS COGs
+requests>=2.32             # CMR granule search (public, no credentials)
+earthaccess>=0.12          # NASA Earthdata Login + granule access; REQUIRED for
+                           # S1 stages 1+. `python -m s1 check` reports if missing.

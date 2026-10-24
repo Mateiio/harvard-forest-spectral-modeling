@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- this project -----------------------------------------------------------
+# Package outputs. Regenerate with `python -m <package> run`.
+out/
+
+# Local data roots. Point HF_DATA_ROOT at your copy instead; see README.
+data/
+modis_downloads/
+*.tif
