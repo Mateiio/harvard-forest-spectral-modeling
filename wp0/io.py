@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-DATA = Path(r"c:\crtusers\matei\prj\data")
+# Archive inputs live outside the repo. Set HF_DATA_ROOT; see README.
+DATA = Path(os.environ.get("HF_DATA_ROOT", "data"))
 PKG = Path(__file__).resolve().parent
 OUT = PKG / "out"
 V0 = PKG.parent / "brainstormingsessions" / "v0"

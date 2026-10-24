@@ -19,6 +19,7 @@ a triplet and the two satellite streams are matched to it within a tolerance.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -26,8 +27,9 @@ import pandas as pd
 
 from s1 import io as sio
 
-MODIS_CSV = Path(r"c:\crtusers\matei\prj\data\MODIS"
-                 r"\Main5Pixels-PointSample-MCD15A2H-061-results.csv")
+# Archive inputs live outside the repo. Set HF_DATA_ROOT; see README.
+DATA = Path(os.environ.get("HF_DATA_ROOT", "data"))
+MODIS_CSV = DATA / "MODIS" / "Main5Pixels-PointSample-MCD15A2H-061-results.csv"
 OUT = Path(__file__).resolve().parent / "out"
 
 HLS_TOL_DAYS = 4        # HLS revisit is a few days; keep the match tight

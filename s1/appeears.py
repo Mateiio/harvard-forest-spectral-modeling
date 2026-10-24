@@ -25,6 +25,7 @@ position, the mapping is rebuilt from the very file that was uploaded.
 from __future__ import annotations
 
 import glob
+import os
 import re
 from pathlib import Path
 
@@ -33,7 +34,8 @@ import pandas as pd
 
 from s1 import io as sio, schema
 
-DATA = Path(r"c:\crtusers\matei\prj\data")
+# Archive inputs live outside the repo. Set HF_DATA_ROOT; see README.
+DATA = Path(os.environ.get("HF_DATA_ROOT", "data"))
 BUNDLE_GLOB = str(DATA / "HLSV2*" / "*" / "*-results.csv")
 
 # AppEEARS' pre-decoded QA columns -> the names s1.qa uses

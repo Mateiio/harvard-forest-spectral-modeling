@@ -9,6 +9,8 @@ implemented and the choice is made empirically at Gate G3 -- see EQ8_FORM.
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -68,7 +70,8 @@ SENSORS = pd.DataFrame(
 # its HLS pixel, so it is the clean single-plot case.
 PRIMARY_PLOTS = ["B2", "C2", "E3"]
 
-DATA = r"c:\crtusers\matei\prj\data"
+# Archive inputs live outside the repo. Set HF_DATA_ROOT; see README.
+DATA = os.environ.get("HF_DATA_ROOT", "data")
 
 PATHS = {
     # Below-canopy PAR, 30-min, 2008-05-02 -> 2025-01-09. MD5 verified against

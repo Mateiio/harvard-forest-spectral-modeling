@@ -7,6 +7,7 @@ rather than quietly staying in the prose.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -24,8 +25,9 @@ OUT = PKG / "out"
 
 #: The window the published HF365 archive covers, for the reach comparison.
 PUBLISHED_HF365 = ("2015-01-23", "2020-08-10")
-MODIS_CSV = Path(r"c:\crtusers\matei\prj\data\MODIS"
-                 r"\Main5Pixels-PointSample-MCD15A2H-061-results.csv")
+# Archive inputs live outside the repo. Set HF_DATA_ROOT; see README.
+DATA = Path(os.environ.get("HF_DATA_ROOT", "data"))
+MODIS_CSV = DATA / "MODIS" / "Main5Pixels-PointSample-MCD15A2H-061-results.csv"
 
 
 @dataclass
@@ -49,7 +51,7 @@ def _score(m, cols, plots, target="lai", regime="known_plot"):
 def f01_target_is_derived() -> F:
     g = pd.read_csv(s8data.sio.WP0_INPUTS["field_lai"], parse_dates=["date"])
     winter = g[g["doy"] < 100]["pai"]
-    site = pd.read_csv(Path(r"c:\crtusers\matei\prj\data\HF069\hf069-02-lai-site.csv"))
+    site = pd.read_csv(DATA / "HF069" / "hf069-02-lai-site.csv")
     w = site[site["doy"] < 100]
     return F("S8-01", "The target is derived, not observed",
              f"HF069 reports plant area index: its leaf-off reading averages "
