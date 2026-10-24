@@ -30,8 +30,14 @@ this project:
 
 | Product | Satellite | Red band | NIR band |
 |---|---|---|---|
-| `HLSL30` | Landsat 8/9 | B4 | B5 |
-| `HLSS30` | Sentinel-2 | B04 | B8A |
+| `HLSL30` | Landsat 8/9 | `B04` | `B05` |
+| `HLSS30` | Sentinel-2 | `B04` | `B8A` |
+
+Layer names are exactly as written, verified 2026-08-07 against the AppEEARS
+product endpoints for `HLSL30.020` and `HLSS30.020`. Landsat is `B04`/`B05`,
+**not** `B4`/`B5` — a request using the short forms fails. Sentinel-2 NIR must
+be `B8A` (narrow, 0.85–0.88 µm, the band HLS bandpass-adjusts to Landsat
+`B05`); `B08` is the broad NIR band (0.78–0.88 µm) and is the wrong one.
 
 ## What's built and tested
 - A notebook that takes a raw HLS Red/NIR point-sample export, computes
