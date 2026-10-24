@@ -52,9 +52,20 @@ setx HF_DATA_ROOT "<path to your data root>"
 ```
 
 Every package reads its inputs from there and writes its own outputs into its own `out/`
-directory, which is ignored here. `python -m wp0 check` reports what it can and cannot
-find, and `python -m s1 selftest` exercises the whole reprocessing pipeline against a
-synthetic granule, needing no credentials and no network.
+directory, which is ignored here. They run in order, `wp0` first, because the others read
+its artifacts:
+
+```
+python -m wp0 check     # reports which of the 15 raw inputs it can find
+python -m wp0 run       # about 15 seconds; writes the foundation the rest depend on
+python -m s1 selftest   # 34 checks against a synthetic granule: no credentials, no network
+```
+
+Because each `FINDINGS.md` is regenerated from whatever artifacts are on disk, running
+`python -m <package> findings` on a tree where the upstream stages have not run marks the
+affected findings `Reproduces: NO` rather than failing or inventing a number. That is the
+intended behaviour. The committed files came from a complete run, and regenerate
+byte-identically from it apart from their date line.
 
 S1 stages past stage 0 need a NASA Earthdata login, read from `~/.netrc` or from
 `EARTHDATA_USERNAME` / `EARTHDATA_PASSWORD`. No credential is stored in this repository.
