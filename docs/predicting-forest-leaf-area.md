@@ -1,10 +1,6 @@
 # Predicting Forest Leaf Area from Satellites
 
-*An end-to-end account of `wp0` → `s1` → `s7` → `s8`, written for a reader who is not a
-remote-sensing specialist. Every number here comes from the `FINDINGS.md` file in the
-package that produced it.*
-
-## What we were trying to do
+## The problem
 
 A forest's **leaf area index** (LAI) is how many square meters of leaf sit above each
 square meter of ground. It drives how much carbon the forest takes in and how much water
@@ -14,9 +10,9 @@ Measuring it means walking to a plot with an instrument. Harvard Forest has done
 grid of small plots since 1998, a few times a year. Satellites pass every few days and see
 the whole forest at once — but they only see color.
 
-**The question: can we turn the satellite's color into the ground crew's number?** If yes,
-you get leaf area every few days instead of a few times a year, and everywhere instead of
-at 46 points.
+If the satellite's color can be turned into the ground crew's number, leaf area becomes
+available every few days instead of a few times a year, and everywhere instead of at 46
+points.
 
 ![Two records are cleaned apart, checked, then joined by date](figures/pipeline.svg)
 
@@ -26,7 +22,7 @@ at 46 points.
 
 **The ground measurement** comes from an optical instrument held under the canopy. It looks
 up and measures how much sky is blocked. It cannot tell a leaf from a branch, so what it
-really measures is *plant* area index (PAI), not leaf area index. That matters later.
+really measures is *plant* area index (PAI), not leaf area index.
 
 **The satellite measurement** is reflectance — how bright the forest is in each color band.
 Leaves absorb red light and reflect infrared strongly, so the gap between those two bands
@@ -48,7 +44,7 @@ The source is the Harvard Forest archive dataset **HF069**. Nothing is downloade
 file sits on disk and is MD5-hashed, so a later run fails loudly if it changed underneath
 us.
 
-**Why bother.** If the local copy of HF069 were ever replaced — archives do revise datasets
+**Why it is hashed.** If the local copy of HF069 were ever replaced — archives do revise datasets
 — every number below would shift and nothing in the code would notice. The fingerprint
 turns that into an error instead: `python -m wp0 verify` re-checks each input against what
 the stage actually consumed, and names any file that moved.
@@ -61,7 +57,7 @@ The cleaning does four things:
 - **Collapses duplicates.** 103 rows share a date and plot with another row. These are real
   repeat measurements, so they are averaged into one row that records how many went in.
 - **Groups visits into campaigns.** Visits within 3 days of each other count as one field
-  campaign. This matters enormously for honest scoring later.
+  campaign. The cross-validation later splits on campaigns, not rows.
 - **Renames the column.** The archive calls it LAI; the archive's own metadata says plant
   area index.
 
@@ -120,10 +116,10 @@ Aggregated from 95 pixels up to 40 plots, the rebuilt record covers **1,075 date
 
 Three independent checks, none of which assume the satellite is right.
 
-**A fake satellite image, built to be hostile.** Testing the real pipeline would need NASA
-credentials and a download every time, so the code writes its own satellite file to disk
-and tests against that. It is not meant to look realistic — it is meant to carry every
-defect the real files have. The main one is the scale factor.
+**A synthetic granule.** Testing the real pipeline would need NASA credentials and a
+download every time, so the code writes its own satellite file to disk and tests against
+that. It does not look realistic; it carries the defects the real files have. The main one
+is the scale factor.
 
 ![The file says 3000; only the code knows it means 0.30](figures/scale-factor-trap.svg)
 
@@ -136,7 +132,7 @@ item #7 on their published known-issues list, and it was never fixed.
 
 So this pipeline never asks the header. The 0.0001 is written into the code, taken from the
 documentation. And the fake file has no multiplier in its header on purpose: if anyone ever
-changes the loader to read it from the file, the tests break that day.
+changes the loader to read it from the file, the tests fail.
 
 Three smaller traps are planted the same way — the true grid origin rather than a tidy
 made-up one, two different markers for missing data (−9999 for reflectance, 40000 for
@@ -154,8 +150,8 @@ it from astronomy. Median disagreement **+0.31°**, with only 2.8% of acquisitio
 more than a degree.
 
 Fifteen findings are recomputed from the files on every run, and the findings document is
-rewritten with whatever the numbers actually are. A claim that stops being true stops
-appearing.
+rewritten with the current values. A finding that stops reproducing is marked
+`Reproduces: NO` rather than dropped.
 
 ## How wrong is each measurement?
 
@@ -181,10 +177,10 @@ var(error_ground) = Var(ground) − Cov(ground,HLS) × Cov(ground,MODIS) / Cov(H
 
 **This is the only role MODIS plays in the project** — it is the required third measurement,
 not a candidate model input. And because many plots share a MODIS cell on a given date, the
-honest sample size is 279 independent blocks, not 1,800; every confidence interval is
+effective sample size is 279 independent blocks, not 1,800; every confidence interval is
 computed on blocks.
 
-**The caveat that must travel with that number.** Triple collocation charges each system
+**The caveat.** Triple collocation charges each system
 with everything it does not share with the other two. Look again at the footprints: every
 genuine difference between what a 10-meter circle sees and what a 500-meter cell sees lands
 in "ground error" by construction. So 29.5% is **disagreement with the larger footprints**,
@@ -198,7 +194,7 @@ fraction and reports where the answer moves: as shared error rises, estimated gr
 *falls* (0.759 to 0.481 PAI at a 20% share), and above 30% it goes negative, which is
 physically impossible. That gives a hard upper bound.
 
-**The usable deliverable** is a per-observation error bar on every satellite value: ±0.0145
+**The deliverable** is a per-observation error bar on every satellite value: ±0.0145
 EVI2 for Landsat, ±0.0227 for Sentinel-2. Sentinel-2 is 1.6× noisier.
 
 ## Matching ground to satellite
@@ -219,11 +215,11 @@ instrument was replaced that year, and spanning the change would mix two calibra
 ## Building the model
 
 The model is **ridge regression** — a straight-line fit with a penalty that stops any one
-input from dominating. Not a neural network, not a random forest. Under honest scoring a
-random forest did *worse* (0.866 against 0.898), because a forest can memorize date-specific
-patterns that do not generalize.
+input from dominating. Not a neural network, not a random forest. Under campaign-grouped
+cross-validation a random forest did *worse* (0.866 against 0.898), because a forest can
+memorize date-specific patterns that do not generalize.
 
-**How it is scored honestly.** Five-fold cross-validation where the folds are grouped by
+**Scoring.** Five-fold cross-validation where the folds are grouped by
 *field campaign*, not by row. Two dates from the same field trip are one sampling occasion
 and must not land on opposite sides of a train/test split. Every number below comes from
 data the model never saw during training.
@@ -235,22 +231,21 @@ what each ingredient buys:
 
 *the model ladder · what each ingredient buys*
 
-Three things that chart says:
+Three results from that chart:
 
-1. **The calendar alone gets you 72%.** A wall calendar with no satellite at all predicts
-   leaf area in a deciduous forest surprisingly well, because leaves come and go on
-   schedule. Any honest claim about satellite skill has to be measured against this, not
-   against zero.
+1. **Day of year alone reaches 72%.** In a deciduous forest leaves come and go on
+   schedule, so the calendar predicts leaf area well with no satellite at all. Satellite
+   skill has to be measured against this baseline, not against zero.
 2. **Plot identity is worth as much as the spectra.** Knowing *which* plot you are standing
    in — one fixed offset per plot — adds as much as all three satellite indices combined.
-   Some plots simply hold more leaf than others, consistently.
+   Some plots hold more leaf than others, consistently.
 3. **Sun angle adds nothing.** More on that below.
 
 The chosen model is **indices + calendar + plot identity: R² 0.898, RMSE 0.411 LAI units**.
 
 ## Where the model works and where it fails
 
-The pooled score hides the interesting part.
+The pooled score hides a sharp seasonal split.
 
 ![Green-up is easy; at peak summer the indices stop telling leaf apart](figures/season-skill.svg)
 
@@ -274,7 +269,7 @@ This uses a hard cutoff — only satellite observations dated on or before `toda
 admissible. Day-of-year is still allowed, because a calendar is legitimately known
 arbitrarily far ahead. That also makes the calendar the baseline to beat. The harder
 reference is **persistence**: run the retrieval on the last available pass and carry that
-value forward, the honest "nothing has changed since we last looked" answer.
+value forward.
 
 ![Two months out, a wall calendar is as good as a satellite](figures/forecast-horizon.svg)
 
@@ -312,8 +307,8 @@ sun-angle correction would keep working.
 
 ## What we know is weak
 
-Stated plainly, because these are the things a reader should not be surprised by later. The
-biggest one is that neither reported score covers the hard case:
+What this work does not establish. The largest gap is that neither reported score covers
+the hard case:
 
 ![The hardest case has never been scored](figures/generalization-quadrants.svg)
 
@@ -322,7 +317,7 @@ biggest one is that neither reported score covers the hard case:
 The rest:
 
 - **The target is derived, not measured.** Everything predicts PAI-minus-plot-minimum, not
-  measured leaf area. Encouragingly, modeling raw PAI instead gives essentially identical
+  measured leaf area. Modeling raw PAI instead gives almost identical
   error (RMSE 0.4114 against 0.4111) once plot identity is in the model — the subtraction is
   largely absorbed by the per-plot offsets. But the target remains an estimate.
 - **The satellite record covers 40 plots, not 46.** The six harvest plots were never ordered
@@ -330,7 +325,7 @@ The rest:
   this as a deliberate scope decision.
 - **The uncertainty estimate is computed and then ignored.** The per-observation error bar
   from triple collocation is written into the satellite file and loaded by the modeling code
-  — and never used as a weight, a feature, or anything else. It rides along as a passenger
+  — and never used as a weight, a feature, or anything else. It is carried as an unused
   column.
 - **One self-regenerating finding is wrong.** S1-13 reports that the high-aerosol rule costs
   55.5 points of the record. It costs 4.1. The calculation credits the rule with every
@@ -339,14 +334,14 @@ The rest:
 - **Several code comments are stale.** Module docstrings in the reprocessing and modeling
   packages carry numbers from before the last data backfill and findings regeneration. The
   regenerated findings files and the output files agree with each other; the docstrings do
-  not. Trust the findings files.
+  not. The findings files are the current ones.
 - **One acquisition record is incomplete.** The archived request file for the largest Landsat
   bundle (2015–2020, the entire comparison window) omits the quality mask from its layer
   list. The delivered data does contain it, so nothing is missing — but the provenance record
   does not match what arrived.
 - **The main extraction step has no command.** Turning 109,185 pixel-rows into 46,200
   plot-rows was done by calling two functions from a notebook. There is no CLI entry point,
-  so the most load-bearing step in the pipeline is reproducible only by hand.
+  so the step the rest of the pipeline depends on is reproducible only by hand.
 
 ## What is not done
 
@@ -358,7 +353,7 @@ The rest:
 - **The light-response study is blocked.** Its code runs and its findings reproduce, but it
   concluded that six point sensors under a closed canopy measure stray sunbeams rather than
   plot-average light. That is the wrong instrument for the question, and the study stops
-  there. A finding, not a failure. See [`s4/`](../s4/FINDINGS.md).
+  there. See [`s4/`](../s4/FINDINGS.md).
 - **The angle study is at notebook one of several** — data loaded and quality-checked, no
   analysis yet. See [`study2/`](../study2/README.md).
 - **MODIS could be extended.** Its record stops at 2020-12-26, but that is a property of how

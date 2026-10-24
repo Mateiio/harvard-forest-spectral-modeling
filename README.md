@@ -1,38 +1,36 @@
 # harvard-forest-spectral-modeling
 
-Can a satellite's view of color be turned into the number a ground crew measures with an
-instrument under the canopy? This repository is the attempt, at Harvard Forest's EMS tower
-site in Petersham, Massachusetts — ground plant-area measurements from the HF069 archive
-against Landsat and Sentinel-2 surface reflectance, with MODIS as an independent third
-opinion.
+Retrieving ground leaf area index from satellite reflectance at the Harvard Forest EMS
+tower, Petersham, Massachusetts. Ground data is HF069 plant area index. Satellite data is
+HLS v2.0 (Landsat 8/9 and Sentinel-2), reprocessed here rather than taken as published.
+MODIS supplies the third stream for a triple-collocation error estimate.
 
-**Start here: [Predicting Forest Leaf Area from Satellites](docs/predicting-forest-leaf-area.md).**
-It is the end-to-end account, written for a non-specialist, and it includes a section
-stating plainly what is weak.
+Ridge regression on EVI2, NDVI, NIRv, day of year and plot identity gives R² 0.898 and
+RMSE 0.411 LAI units for a known plot on an unvisited date, cross-validated by field
+campaign. Day of year alone gives R² 0.721.
 
-The short version: a ridge regression on three spectral indices plus day-of-year plus plot
-identity reaches **R² 0.898** for a known plot on a date nobody visited. A wall calendar
-with no satellite at all reaches 0.721, which is the number any claim about satellite skill
-has to beat.
+Write-up, including the weaknesses:
+[docs/predicting-forest-leaf-area.md](docs/predicting-forest-leaf-area.md).
 
-## The map
+## Packages
 
-| | Question it answers | Run it with |
+| | Contents | Commands |
 |---|---|---|
-| [`wp0/`](wp0/) | What are the inputs, exactly, and have they changed? Plot geometry, pixel crosswalks, solar table, HF069 cleaning, the PAI→LAI variants | `python -m wp0 check \| run \| findings` |
-| [`s1/`](s1/) | What does the satellite record look like rebuilt from HLS v2.0 rather than taken as published? | `python -m s1 check \| selftest \| run \| findings` |
-| [`s7/`](s7/) | How wrong is each measurement, without assuming any of them is right? | `python -m s7 run \| findings` |
-| [`s8/`](s8/) | How well can ground leaf area be retrieved, and forecast, from that record? | `python -m s8 build \| fit \| forecast \| findings` |
-| [`s4/`](s4/) | Can illumination geometry be separated from canopy change? **Blocked** — the instruments cannot answer it, and the findings say so | `python -m s4 build \| findings` |
-| [`study2/`](study2/) | Does sun angle bias the record? **Notebook one of several** | see [study2/README.md](study2/README.md) |
+| [`wp0/`](wp0/) | Input registry with MD5 provenance, plot centroids, HLS and MODIS crosswalks, solar table, HF069 roster cleaning, PAI→LAI variants | `check` `run` `stage` `findings` |
+| [`s1/`](s1/) | HF365 rebuilt from HLS v2.0: CMR search, Fmask decoding, masking before indices, a synthetic granule for testing | `check` `selftest` `stage` `run` `findings` |
+| [`s7/`](s7/) | Triple collocation: error variance for three collocated streams, blocked bootstrap, correlated-error sweep | `run` `findings` |
+| [`s8/`](s8/) | Ground LAI retrieval: campaign-grouped CV, the model ladder, forecast by horizon | `build` `fit` `forecast` `findings` |
+| [`s4/`](s4/) | Matched-SZA decomposition. Incomplete: the available sensors cannot answer the question, see S4-07 | `build` `findings` |
+| [`study2/`](study2/) | Solar zenith angle and the HF365 record. Ingest and QC only, see [study2/README.md](study2/README.md) | |
 
-Each package carries a `FINDINGS.md` that `python -m <package> findings` **rewrites from
-the artifacts on every run**. Numbers that stop being true stop appearing, and a finding
-that fails to reproduce is marked FAIL rather than quietly dropped. When a module docstring
-and a findings file disagree, the findings file is the one that was regenerated.
+Run as `python -m <package> <command>`.
 
-Each also has its narrative notebook beside its code, with outputs kept so it reads here
-without running anything.
+`python -m <package> findings` regenerates that package's `FINDINGS.md` from the artifacts
+on disk. A finding whose inputs are missing, or whose recomputed value no longer matches,
+is marked `Reproduces: NO`. Where a module docstring and a findings file disagree, the
+findings file is the current one.
+
+Each package also keeps its notebook, with outputs saved.
 
 ## Running it
 
@@ -40,47 +38,36 @@ without running anything.
 pip install -r requirements.txt
 ```
 
-Pinned against Python 3.14 on Windows. Note that `pygam` holds `scipy` below 1.17.
+Python 3.14 on Windows. `pygam` holds `scipy` below 1.17.
 
-**The data is not in this repository**, and should not be: HF069, the AppEEARS bundles and
-the MODIS extracts are third-party archive products, several hundred megabytes, and freely
-available from their sources. Point the code at your local copy with one environment
-variable:
+The archive data is not in this repository. HF069, the AppEEARS bundles and the MODIS
+extracts run to several hundred megabytes and are available from their sources. Set
+`HF_DATA_ROOT` to your local copy:
 
 ```
 setx HF_DATA_ROOT "<path to your data root>"
 ```
 
-Every package reads its inputs from there and writes its own outputs into its own `out/`
-directory, which is ignored here. They run in order, `wp0` first, because the others read
-its artifacts:
+Outputs are written to each package's own `out/`, which is ignored here. `wp0` runs first;
+the others read its artifacts.
 
 ```
-python -m wp0 check     # reports which of the 15 raw inputs it can find
-python -m wp0 run       # about 15 seconds; writes the foundation the rest depend on
-python -m s1 selftest   # 34 checks against a synthetic granule: no credentials, no network
+python -m wp0 check     # which of the 15 raw inputs are present
+python -m wp0 run       # ~15 s, writes the foundation artifacts
+python -m s1 selftest   # 34 checks against a synthetic granule, offline
 ```
-
-Because each `FINDINGS.md` is regenerated from whatever artifacts are on disk, running
-`python -m <package> findings` on a tree where the upstream stages have not run marks the
-affected findings `Reproduces: NO` rather than failing or inventing a number. That is the
-intended behaviour. The committed files came from a complete run, and regenerate
-byte-identically from it apart from their date line.
 
 S1 stages past stage 0 need a NASA Earthdata login, read from `~/.netrc` or from
-`EARTHDATA_USERNAME` / `EARTHDATA_PASSWORD`. No credential is stored in this repository.
+`EARTHDATA_USERNAME` / `EARTHDATA_PASSWORD`.
 
-## Data and attribution
+## Data
 
-Ground measurements come from **Harvard Forest Data Archive HF069**, satellite reflectance
-from **NASA HLS v2.0** (`HLSL30.020` / `HLSS30.020`, tile T18TYN) via AppEEARS, and the
-third collocated stream from **MODIS MCD15A2H v061**. Cite those sources, not this
-repository, for the underlying measurements. Code here is MIT licensed; the data is not
-ours to license.
+HF069 from the Harvard Forest Data Archive, HLS v2.0 (`HLSL30.020` / `HLSS30.020`, tile
+T18TYN) via AppEEARS, and MODIS MCD15A2H v061. Cite those for the measurements, not this
+repository. The code is MIT licensed.
 
 ## archive/
 
-[`archive/actions/`](archive/actions/) holds the first generation of this work: exploratory
-notebooks against the published HF365 and MODIS records, numbered in the order they were
-done. They are kept because they record how the questions were arrived at, and superseded
-by the packages above — `07-hls-recreation` in particular is the route that `s1` replaced.
+[`archive/actions/`](archive/actions/) is the earlier notebook work against the published
+HF365 and MODIS records, numbered in the order it was done. Superseded by the packages
+above; `07-hls-recreation` is the route `s1` replaced.
