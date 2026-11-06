@@ -12,6 +12,10 @@ campaign. Day of year alone gives R² 0.721.
 Write-up, including the weaknesses:
 [docs/predicting-forest-leaf-area.md](docs/predicting-forest-leaf-area.md).
 
+Recreating all of it from a bare laptop — what to download, what order to run it in, what
+numbers should come out and which ones will not match:
+[docs/recreating-the-results.md](docs/recreating-the-results.md).
+
 ## Packages
 
 | | Contents | Commands |
